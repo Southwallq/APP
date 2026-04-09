@@ -9,12 +9,12 @@ import us.codecraft.webmagic.processor.PageProcessor;
 public class Main {
     public static void main(String[] args) {
 
-        Spider spider = Spider.create(new ZgkejizxDualDbCrawler())
-                .addUrl("http://www.zgkejizx.com/").thread(3);
-
-        ZgkejizxDualDbCrawler.DualDbPipeline pipeline = new ZgkejizxDualDbCrawler.DualDbPipeline();
-        pipeline.setSpider(spider);
-        spider.addPipeline(pipeline).run();
-
-    }
+//        Spider spider = Spider.create(new TechNewsCrawler())
+//                .addUrl("http://www.zgkejizx.com/").thread(3);
+//
+//        TechNewsCrawler.DualDbPipeline pipeline = new TechNewsCrawler.DualDbPipeline();
+//        pipeline.setSpider(spider);
+//        spider.addPipeline(pipeline).run();
+//
+  }
 }
