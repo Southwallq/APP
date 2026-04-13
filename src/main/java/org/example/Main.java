@@ -1,56 +1,42 @@
 package org.example;
 
 import org.springframework.boot.SpringApplication;
-import org.springframework.boot.WebApplicationType; // 1. 必须导入这个枚举
+import org.springframework.boot.WebApplicationType;
 import org.springframework.context.ConfigurableApplicationContext;
 
 import java.util.Scanner;
 
 public class Main {
-
     public static void main(String[] args) {
         System.out.println("正在启动 Spring 容器...");
 
-        // 2. 创建 SpringApplication 实例
-        SpringApplication app = new SpringApplication(DemoApplication.class);
+        try {
+            SpringApplication app = new SpringApplication(DemoApplication.class);
+            app.setWebApplicationType(WebApplicationType.NONE);
+            ConfigurableApplicationContext context = app.run(args);
 
-        // 3. 【关键步骤】强制设置为非 Web 应用，这样就不会去检查什么 WebServerFactory 了
-        app.setWebApplicationType(WebApplicationType.NONE);
+            // 尝试获取 Bean，如果这里报错，说明是 Bean 创建失败
+            DeepSeekService service = context.getBean(DeepSeekService.class);
 
-        // 4. 启动容器
-        ConfigurableApplicationContext context = app.run(args);
+            System.out.println("✅ 启动成功！");
+            System.out.println("------------------------------------------------");
+            System.out.println("🤖 DeepSeek 聊天机器人已启动！");
+            System.out.println("------------------------------------------------");
 
-        // 5. 获取 Service
-        DeepSeekService service = context.getBean(DeepSeekService.class);
+            Scanner scanner = new Scanner(System.in);
+            while (true) {
+                System.out.print("\n👤 我: ");
+                String input = scanner.nextLine();
+                if ("exit".equalsIgnoreCase(input)) break;
+                if (input.trim().isEmpty()) continue;
 
-        System.out.println("------------------------------------------------");
-        System.out.println("🤖 DeepSeek 聊天机器人已启动！");
-        System.out.println("👉 请输入内容（输入 'exit' 退出）：");
-        System.out.println("------------------------------------------------");
-
-        // 6. 循环对话
-        Scanner scanner = new Scanner(System.in);
-        while (true) {
-            System.out.print("\n👤 我: ");
-            String input = scanner.nextLine();
-
-            if ("exit".equalsIgnoreCase(input) || "quit".equalsIgnoreCase(input)) {
-                System.out.println("👋 再见！");
-                break;
+                System.out.println("🤖 AI: " + service.chat(input));
             }
+            context.close();
 
-            if (input.trim().isEmpty()) continue;
-
-            try {
-                String reply = service.chat(input);
-                System.out.println("🤖 AI: " + reply);
-            } catch (Exception e) {
-                System.err.println("❌ 出错了: " + e.getMessage());
-                e.printStackTrace();
-            }
+        } catch (Exception e) {
+            System.err.println("❌ 启动失败，详细原因如下：");
+            e.printStackTrace(); // 这行代码会打印出真正的错误信息
         }
-
-        context.close();
-        scanner.close();
     }
 }
