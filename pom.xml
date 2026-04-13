@@ -12,6 +12,9 @@
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+
+        <java.version>26</java.version> <!-- 这里改成 17 或 21 -->
     </properties>
     <dependencies>
         <!-- WebMagic 核心框架 -->
@@ -27,11 +30,7 @@
             <version>0.8.0</version>
         </dependency>
         <!-- 控制台日志输出框架，方便观察爬虫抓取过程 -->
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-simple</artifactId>
-            <version>2.0.7</version>
-        </dependency>
+
         <dependency>
             <groupId>org.mongodb</groupId>
             <artifactId>mongodb-driver-sync</artifactId>
@@ -42,6 +41,31 @@
             <artifactId>mysql-connector-java</artifactId>
             <version>8.0.33</version>
         </dependency>
-    </dependencies>
 
+
+        <!-- 1. 引入 Spring AI 的 OpenAI 适配器 -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-openai-spring-boot-starter</artifactId>
+            <version>1.0.0-M6</version> <!-- 版本号请根据实际 Spring Boot 版本调整 -->
+        </dependency>
+
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>okhttp</artifactId>
+            <version>4.12.0</version> <!-- 推荐使用 4.x 稳定版本 -->
+        </dependency>
+    </dependencies>
+    <!-- 2. 引入 BOM 管理版本（放在 <dependencyManagement> 标签内） -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.ai</groupId>
+                <artifactId>spring-ai-bom</artifactId>
+                <version>1.0.0-M6</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 </project>
