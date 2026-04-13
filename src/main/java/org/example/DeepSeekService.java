@@ -13,7 +13,7 @@ import java.io.IOException;
 public class DeepSeekService {
 
     // ... (API_KEY 等配置保持不变) ...
-    private static final String API_KEY = "sk-YOUR_DEEPSEEK_API_KEY";
+    private static final String API_KEY = "sk-7aefe0eb3fad401faae9ded23d2933e2";
     private static final String API_URL = "https://api.deepseek.com/v1/chat/completions";
     private String userQuestion;
 
