@@ -1,42 +1,33 @@
 package org.example;
 
 import org.springframework.boot.SpringApplication;
-import org.springframework.boot.WebApplicationType;
-import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.ApplicationContext;
 
-import java.util.Scanner;
-
+@SpringBootApplication
 public class Main {
     public static void main(String[] args) {
-        System.out.println("正在启动 Spring 容器...");
+        // 启动 Spring Boot 服务器
+        ApplicationContext context = SpringApplication.run(Main.class, args);
 
-        try {
-            SpringApplication app = new SpringApplication(DemoApplication.class);
-            app.setWebApplicationType(WebApplicationType.NONE);
-            ConfigurableApplicationContext context = app.run(args);
+        // 获取 ES 服务（自动判断是否连接成功）
+        NewsSearchService newsSearchService = context.getBean(NewsSearchService.class);
+        boolean esOk = newsSearchService.testEsConnection();
 
-            // 尝试获取 Bean，如果这里报错，说明是 Bean 创建失败
-            DeepSeekService service = context.getBean(DeepSeekService.class);
+        // 启动成功提示（保持你原来的风格）
+        System.out.println("========================================");
+        System.out.println("✅ 服务器启动成功！");
+        System.out.println("📌 AI 聊天接口地址：POST http://localhost:8080/ai/chat");
+        System.out.println("📌 新闻检索接口：POST http://localhost:8080/api/news/search");
 
-            System.out.println("✅ 启动成功！");
-            System.out.println("------------------------------------------------");
-            System.out.println("🤖 DeepSeek 聊天机器人已启动！");
-            System.out.println("------------------------------------------------");
-
-            Scanner scanner = new Scanner(System.in);
-            while (true) {
-                System.out.print("\n👤 我: ");
-                String input = scanner.nextLine();
-                if ("exit".equalsIgnoreCase(input)) break;
-                if (input.trim().isEmpty()) continue;
-
-                System.out.println("🤖 AI: " + service.chat(input));
-            }
-            context.close();
-
-        } catch (Exception e) {
-            System.err.println("❌ 启动失败，详细原因如下：");
-            e.printStackTrace(); // 这行代码会打印出真正的错误信息
+        // 自动显示 ES 状态
+        if (esOk) {
+            System.out.println("✅ ES 检索服务已连接");
+        } else {
+            System.out.println("⚠️  使用内存检索（无需安装ES）");
         }
+
+        System.out.println("📌 接口已封装完成，可直接部署到服务器");
+        System.out.println("========================================");
     }
 }

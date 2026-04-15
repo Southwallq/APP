@@ -1,67 +1,82 @@
 package org.example;
 
-import java.util.Scanner;
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
-import okhttp3.*; // 导入 okhttp3 包，但不单独导入 RequestBody
-import org.springframework.web.bind.annotation.*; // 导入 Spring 注解
+import com.alibaba.fastjson2.JSONArray;
+import com.alibaba.fastjson2.JSONObject;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+import okhttp3.MediaType;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
 
+// 这就是服务器接口控制器
 @RestController
-@RequestMapping("/api/deepseek")
+@RequestMapping("/ai")
 public class DeepSeekService {
 
-    // ... (API_KEY 等配置保持不变) ...
     private static final String API_KEY = "sk-7aefe0eb3fad401faae9ded23d2933e2";
     private static final String API_URL = "https://api.deepseek.com/v1/chat/completions";
-    private String userQuestion;
 
+    // ==============================================
+    // ✅ 这就是你要的【服务器接口】
+    // 前端调用地址：POST http://localhost:8080/ai/chat
+    // ==============================================
     @PostMapping("/chat")
-    // 这里的 RequestBody 指的是 Spring 的注解
-    public String chat(@org.springframework.web.bind.annotation.RequestBody String userQuestion) {
-        this.userQuestion = userQuestion;
-        System.out.println("收到用户提问: " + userQuestion);
-        return callDeepSeekApi(userQuestion);
+    public String chat(@RequestBody String userQuestion) {
+        try {
+            return getDeepSeekAnswer(userQuestion);
+        } catch (Exception e) {
+            return "AI 服务异常：" + e.getMessage();
+        }
     }
+
+    // DeepSeek 官方接口调用
     public String getDeepSeekAnswer(String question) {
-        // 这里是你发送 OkHttp 请求的逻辑
-        // ...
-        return "回答内容";
-    }
-    private String callDeepSeekApi(String question) {
         OkHttpClient client = new OkHttpClient();
 
-        // ... (构建 jsonBody 代码保持不变) ...
         JSONObject jsonBody = new JSONObject();
         jsonBody.put("model", "deepseek-chat");
+
         JSONArray messages = new JSONArray();
         JSONObject message = new JSONObject();
         message.put("role", "user");
         message.put("content", question);
         messages.add(message);
-        jsonBody.put("messages", messages);
 
-        // 🔴 重点修改在这里 🔴
-        // 必须写全 okhttp3.RequestBody，不能用简称
+        jsonBody.put("messages", messages);
+        jsonBody.put("temperature", 0.7);
+        jsonBody.put("stream", false);
+
         okhttp3.RequestBody body = okhttp3.RequestBody.create(
                 jsonBody.toJSONString(),
-                okhttp3.MediaType.get("application/json; charset=utf-8")
+                MediaType.parse("application/json; charset=utf-8")
         );
 
         Request request = new Request.Builder()
                 .url(API_URL)
                 .addHeader("Authorization", "Bearer " + API_KEY)
                 .addHeader("Content-Type", "application/json")
-                .post(body) // 这里传入上面的 body
+                .post(body)
                 .build();
 
-        // ... (后续执行请求的代码保持不变) ...
         try (Response response = client.newCall(request).execute()) {
-            // ...
-            return response.body().string(); // 简化演示
+            if (response.body() == null) return "DeepSeek 返回为空";
+
+            String result = response.body().string();
+            JSONObject jsonObject = JSONObject.parseObject(result);
+
+            return jsonObject
+                    .getJSONArray("choices")
+                    .getJSONObject(0)
+                    .getJSONObject("message")
+                    .getString("content");
+
         } catch (IOException e) {
-            return "Error: " + e.getMessage();
+            return "请求失败：" + e.getMessage();
         }
     }
 }

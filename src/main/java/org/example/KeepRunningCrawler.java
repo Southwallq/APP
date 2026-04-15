@@ -35,7 +35,7 @@ public class KeepRunningCrawler implements PageProcessor {
         String url = page.getUrl().toString();
         System.out.println("👉 正在处理文章：" + url);
 
-        String title = page.getHtml().xpath("//meta[@property='og:title']/@content").get();
+        String title =  page.getHtml().xpath("//meta[@property='og:title']/@content").get();
         if (title != null && title.contains("-品玩")) {
             title = title.replace("-品玩", "").trim();
         }
