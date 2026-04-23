@@ -6,6 +6,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.MediaType;
+import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -13,20 +14,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
 
-// 这就是服务器接口控制器
-@RestController
-@RequestMapping("/ai")
+@Service  // ✅ 必须有这个
 public class DeepSeekService {
 
     private static final String API_KEY = "sk-7aefe0eb3fad401faae9ded23d2933e2";
     private static final String API_URL = "https://api.deepseek.com/v1/chat/completions";
 
-    // ==============================================
-    // ✅ 这就是你要的【服务器接口】
-    // 前端调用地址：POST http://localhost:8080/ai/chat
-    // ==============================================
-    @PostMapping("/chat")
-    public String chat(@RequestBody String userQuestion) {
+    public String chat(String userQuestion) {
         try {
             return getDeepSeekAnswer(userQuestion);
         } catch (Exception e) {
@@ -34,7 +28,6 @@ public class DeepSeekService {
         }
     }
 
-    // DeepSeek 官方接口调用
     public String getDeepSeekAnswer(String question) {
         OkHttpClient client = new OkHttpClient();
 
