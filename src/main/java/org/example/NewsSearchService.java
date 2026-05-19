@@ -60,12 +60,25 @@ public class NewsSearchService {
                 mainQuery.add(new MatchAllDocsQuery(), BooleanClause.Occur.MUST);
             }
 
-            // 2. 精确过滤 (Topic / Source)
+            // 2. 🌟 升级版精确过滤：支持多选 (Topic / Source)
             if (topic != null && !topic.isBlank()) {
-                mainQuery.add(new TermQuery(new Term("topic", topic)), BooleanClause.Occur.MUST);
+                String[] topics = topic.split(",");
+                BooleanQuery.Builder topicQuery = new BooleanQuery.Builder();
+                for (String t : topics) {
+                    // SHOULD 相当于 SQL 里的 OR (只要匹配其中一个分类即可)
+                    topicQuery.add(new TermQuery(new Term("topic", t.trim())), BooleanClause.Occur.SHOULD);
+                }
+                // MUST 意味着“必须满足上面那个 OR 条件组”
+                mainQuery.add(topicQuery.build(), BooleanClause.Occur.MUST);
             }
+
             if (source != null && !source.isBlank()) {
-                mainQuery.add(new TermQuery(new Term("source", source)), BooleanClause.Occur.MUST);
+                String[] sources = source.split(",");
+                BooleanQuery.Builder sourceQuery = new BooleanQuery.Builder();
+                for (String s : sources) {
+                    sourceQuery.add(new TermQuery(new Term("source", s.trim())), BooleanClause.Occur.SHOULD);
+                }
+                mainQuery.add(sourceQuery.build(), BooleanClause.Occur.MUST);
             }
 
             // 3. 时间范围过滤 (Lucene 的 TermRangeQuery)
