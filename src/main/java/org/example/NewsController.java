@@ -1,105 +1,80 @@
 package org.example;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
+
+// 🌟 新增：MongoDB 相关的依赖包
+import com.mongodb.client.MongoCollection;
+import org.bson.Document;
+import com.mongodb.client.model.Filters;
 
 @RestController
 @RequestMapping("/api/news")
-
 public class NewsController {
 
     private final NewsSearchService newsSearchService;
     private final DeepSeekService deepSeekService;
 
-    // ====================== 构造函数：启动时插入模拟数据 ======================
+    // 💡 构造函数注入
     public NewsController(NewsSearchService newsSearchService, DeepSeekService deepSeekService) {
         this.newsSearchService = newsSearchService;
         this.deepSeekService = deepSeekService;
-
-        // 启动时插入数据
-        initMockData();
     }
 
-    private void initMockData() {
-        // 删除或注释掉这段：
-        // Map<String, Object> existing = newsSearchService.searchNews("", "", "", null, null, 0, 10);
-        // List<?> list = (List<?>) existing.get("content");
-        // if (list != null && !list.isEmpty()) {
-        //     System.out.println("已有数据，跳过模拟数据插入");
-        //     return;
-        // }
-
-        // ✅ 直接清空并插入
-        newsSearchService.clearAll();
-
-        java.time.LocalDateTime now = java.time.LocalDateTime.now();
-        java.time.format.DateTimeFormatter formatter =
-                java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
-
-        createAndSaveNews("news-001", "OpenAI 发布 GPT-5...", "...", "人工智能", "机器之心", now.format(formatter));
-        createAndSaveNews("news-002", "英伟达发布 H200...", "...", "芯片", "36氪", now.minusDays(2).format(formatter));
-        createAndSaveNews("news-003", "宁德时代发布凝聚态电池...", "...", "新能源", "新浪科技", now.minusDays(10).format(formatter));
-        createAndSaveNews("news-004", "SpaceX 星舰第六次...", "...", "航空航天", "虎嗅", now.minusDays(15).format(formatter));
-        createAndSaveNews("news-005", "中科院发布量子计算...", "...", "量子计算", "科技日报", now.minusDays(35).format(formatter));
-
-        System.out.println("✅ 模拟新闻数据已插入：5 条（时间分布：今天、2天前、10天前、15天前、35天前）");
-    }
-
-    private void createAndSaveNews(String id, String title, String summary,
-                                   String topic, String source, String timeStr) {
-        NewsDoc doc = new NewsDoc();
-        doc.setId(id);
-        doc.setTitle(title);
-        doc.setSummary(summary);
-        doc.setContent("<p>" + summary + "</p><p>详细内容：这是关于" + title + "的完整报道...</p>");
-        doc.setTopic(topic);
-        doc.setSource(source);
-        // ✅ 修复：String 转 LocalDateTime
-        doc.setPublishTime(LocalDateTime.parse(timeStr));
-        doc.setViewCount((long)(Math.random() * 20000 + 5000));
-        doc.setCoverImageUrl("https://picsum.photos/400/300?random=" + id);
-        newsSearchService.saveNews(doc);
-    }
-
-    // ... 其他原有方法（test-es, search, detail, chat, save, batch-save）不变 ...
-
-    @GetMapping("/test-es")
-    public Map<String, Object> test() {
-        return Map.of("code", 200, "msg", "✅ 服务已启动", "data", true);
-    }
-
+    /**
+     * 新闻搜索接口 (Lucene 实现)
+     */
     @PostMapping("/search")
     public Map<String, Object> search(@RequestBody Map<String, Object> params) {
         String keyword = (String) params.getOrDefault("keyword", "");
         String topic = (String) params.getOrDefault("topic", "");
         String source = (String) params.getOrDefault("source", "");
-        String startTime = (String) params.getOrDefault("startTime", "");  // ✅ 新增
-        String endTime = (String) params.getOrDefault("endTime", "");      // ✅ 新增
-        int pageNum = (int) params.getOrDefault("pageNum", 0);
+        String startTime = (String) params.getOrDefault("startTime", "");
+        String endTime = (String) params.getOrDefault("endTime", "");
+        int pageNum = (int) params.getOrDefault("pageNum", 1);
         int pageSize = (int) params.getOrDefault("pageSize", 10);
 
+        // 调用 Lucene 版本的搜索
         Map<String, Object> data = newsSearchService.searchNews(
-                keyword, topic, source, startTime, endTime, pageNum, pageSize  // ✅ 传递时间
+                keyword, topic, source, startTime, endTime, pageNum, pageSize
         );
         return Map.of("code", 200, "msg", "成功", "data", data);
     }
 
+    /**
+     * 🌟 修复版：新闻详情接口 (查 MongoDB，带图片返回)
+     */
     @GetMapping("/detail")
     public Map<String, Object> detail(@RequestParam String id) {
-        NewsDoc doc = newsSearchService.findById(id);
-        if (doc == null) {
-            Map<String, Object> result = new HashMap<>();
-            result.put("code", 404);
-            result.put("msg", "新闻不存在");
-            result.put("data", null);
-            return result;
+        Map<String, Object> result = new HashMap<>();
+        try {
+            // 1. 获取 MongoDB 集合 (利用你现成的 JDBC 工具类)
+            MongoCollection<Document> collection = JDBC.getMongoCollection("news_content");
+
+            // 2. 根据 ID 查询那条唯一的新闻
+            Document doc = collection.find(Filters.eq("id", id)).first();
+
+            if (doc != null) {
+                // 成功从 MongoDB 拿到完整数据（包含 images 数组）
+                result.put("code", 200);
+                result.put("msg", "成功");
+                result.put("data", doc);
+            } else {
+                result.put("code", 404);
+                result.put("msg", "新闻不存在");
+                result.put("data", null);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            result.put("code", 500);
+            result.put("msg", "服务器内部错误");
         }
-        return Map.of("code", 200, "msg", "成功", "data", doc);
+        return result;
     }
 
+    /**
+     * AI 问答接口：基于单篇新闻
+     */
     @PostMapping("/chat")
     public Map<String, Object> chat(@RequestBody Map<String, Object> params) {
         String question = (String) params.get("question");
@@ -114,23 +89,50 @@ public class NewsController {
         }
 
         String answer = deepSeekService.chat(prompt);
+        return Map.of("code", 200, "msg", "成功", "data", Map.of("answer", answer));
+    }
+
+    /**
+     * 🌟 RAG 问答：基于 Lucene 全库检索
+     */
+    @PostMapping("/ask-db")
+    public Map<String, Object> askDatabase(@RequestBody Map<String, Object> params) {
+        String question = (String) params.get("question");
+        if (question == null || question.trim().isEmpty()) {
+            return Map.of("code", 400, "msg", "问题不能为空");
+        }
+
+        // 1. 利用 Lucene 进行相关性检索
+        Map<String, Object> searchResult = newsSearchService.searchNews(
+                question, null, null, null, null, 1, 5
+        );
+
+        List<NewsDoc> relatedNews = (List<NewsDoc>) searchResult.get("list");
+
+        // 2. 组装 Prompt (开卷考试模式)
+        StringBuilder promptBuilder = new StringBuilder();
+        promptBuilder.append("你是一个科技新闻助手。请基于以下检索到的新闻库内容回答问题：\n\n");
+
+        if (relatedNews != null && !relatedNews.isEmpty()) {
+            for (int i = 0; i < relatedNews.size(); i++) {
+                NewsDoc doc = relatedNews.get(i);
+                promptBuilder.append("【来源 ").append(i + 1).append("】").append(doc.getTitle()).append("\n");
+                // 截取摘要，防止 Prompt 太长
+                String content = doc.getContent();
+                if (content != null && content.length() > 300) content = content.substring(0, 300) + "...";
+                promptBuilder.append("内容：").append(content).append("\n\n");
+            }
+        }
+
+        promptBuilder.append("用户问题：").append(question).append("\n作答：");
+
+        // 3. 调用 AI
+        String answer = deepSeekService.chat(promptBuilder.toString());
 
         return Map.of(
                 "code", 200,
                 "msg", "成功",
-                "data", Map.of("answer", answer, "sessionId", UUID.randomUUID().toString())
+                "data", Map.of("answer", answer, "referenceCount", relatedNews != null ? relatedNews.size() : 0)
         );
-    }
-
-    @PostMapping("/save")
-    public Map<String, Object> save(@RequestBody NewsDoc doc) {
-        newsSearchService.saveNews(doc);
-        return Map.of("code", 200, "msg", "保存成功");
-    }
-
-    @PostMapping("/batch-save")
-    public Map<String, Object> batchSave(@RequestBody List<NewsDoc> list) {
-        newsSearchService.batchSaveNews(list);
-        return Map.of("code", 200, "msg", "批量保存成功");
     }
 }
